@@ -6,6 +6,10 @@
 #include <GLFW/glfw3.h>
 
 #include "triangle.h"
+#include "star.h"
+#include "starContour.h"
+#include "circle.h"
+#include "circleContour.h"
 #include "program.h"
 
 class Window{
@@ -23,6 +27,12 @@ class Window{
     GLFWwindow* window_;
 
     Triangle triangle_;
+    Star star_;
+    StarContour starContour_;
+    Circle circle_;
+    CircleContour circleContour_;
+
+    int mode_;
 
     Program program_;
 

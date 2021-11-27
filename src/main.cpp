@@ -5,7 +5,6 @@
 #include <GLFW/glfw3.h>
 
 
-
 const int kMajorGLVersion = 4;
 const int kMinorGLVersion = 3;
 

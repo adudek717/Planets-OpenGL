@@ -145,15 +145,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\circle.cpp" />
+    <ClCompile Include="src\circleContour.cpp" />
     <ClCompile Include="src\glerror.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\program.cpp" />
+    <ClCompile Include="src\star.cpp" />
+    <ClCompile Include="src\starContour.cpp" />
     <ClCompile Include="src\triangle.cpp" />
     <ClCompile Include="src\window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\circle.h" />
+    <ClInclude Include="src\circleContour.h" />
     <ClInclude Include="src\glerror.h" />
     <ClInclude Include="src\program.h" />
+    <ClInclude Include="src\star.h" />
+    <ClInclude Include="src\starContour.h" />
     <ClInclude Include="src\triangle.h" />
     <ClInclude Include="src\window.h" />
   </ItemGroup>
