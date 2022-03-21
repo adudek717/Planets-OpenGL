@@ -14,5 +14,5 @@ Scroll = Mouse wheel - zoom in/zoom out
 
 # Gifs preview
 
-![Preview 3](/screenshots/Planets-gif-1.gif?raw=true "Planets-3")
-![Preview 4](/screenshots/Planets-gif-2.gif?raw=true "Planets-4")
+![Preview 3](/screenshots/Planets-vid-1.gif?raw=true "Planets-3")
+![Preview 4](/screenshots/Planets-vid-2.gif?raw=true "Planets-4")
