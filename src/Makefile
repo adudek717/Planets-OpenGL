@@ -1,9 +1,8 @@
-NAME=triangle
+NAME=torus
 CXX=g++
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
-CFLAGS=-c -Wall -DDEBUG -g3 -fpermissive -std=c++11 -MMD
-
+CFLAGS=-c -Wall -DDEBUG -g3 -fpermissive -MMD
 
 ifeq ($(OS),Windows_NT)
 # -l:pelna forma biblioteki bez autodopasowywania lib*.a W zwiazku z czym trzeba to ustawic jawnie
@@ -11,7 +10,7 @@ ifeq ($(OS),Windows_NT)
 # W razie problemów z biblioteką glew wypróbować wiersz wyżej
 LIBS =-lglfw3 -lglew32 -lopengl32 -lm -lglu32 -lgdi32
 EXECUTABLE = $(NAME).exe
-LDFLAGS=-Wl,--subsystem,windows
+#LDFLAGS=-Wl,--subsystem,windows
 else
 LIBS = -lX11 -lglfw -lGL -lGLU -lGLEW -lm
 EXECUTABLE = $(NAME)
@@ -24,7 +23,7 @@ clean:
 	rm -f $(SOURCES:%.cpp=%.d)
 
 # compilation
-.cpp.o:
+%.o: %.cpp
 	$(CXX) $(CFLAGS) $< -o $@ $(LIBS)
 
 # linking
@@ -32,11 +31,11 @@ $(EXECUTABLE): $(OBJECTS)
 	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS) $(LIBS)
 
 run: $(EXECUTABLE)
-	./$(EXECUTABLE)
+	./$(EXECUTABLE) -sync -gldebug
 -include $(SOURCES:%.cpp=%.d)
 
 zip: clean
-	zip -r $(NAME) *.h *.cpp Makefile
+	zip -r $(NAME) *.h *.cpp *.glsl *.tga Makefile
 ok: run
 	find . -type f -not -name '*.zip' -print0 | xargs -0 rm --
 	ok2

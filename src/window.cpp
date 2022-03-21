@@ -1,4 +1,6 @@
+#define DEBUG
 #include "window.h"
+
 
 #include <iostream>
 #include <cstdlib>
@@ -7,12 +9,101 @@
 #include <GLFW/glfw3.h>
 
 #include "glerror.h"
+#include "material.h"
+#include "light.h"
+
+const char* kPointLightVertexShader="PointLight.vertex.glsl";
+const char* kPointLightFragmentShader="PointLight.fragment.glsl";
+const char* kSunLightVertexShader="SunLight.vertex.glsl";
+const char* kSunLightFragmentShader="SunLight.fragment.glsl";
+const char* kSpotLightVertexShader="SpotLight.vertex.glsl";
+const char* kSpotLightFragmentShader="SpotLight.fragment.glsl";
+
+const char* kVertexShader = "TextureShader.vertex.glsl";
+const char* kFragmentShader = "TextureShader.fragment.glsl";
+
+const char* kIceTexureFile="ice.tga";
+const char* kColorTexureFile="texture.tga";
+const char* skyTextureFile = "nightsky.tga";
+const char* jupiterTextureFile = "jupitermap.tga";
+const char* moonTextureFile = "europamoon.tga";
+const char* sunTextureFile = "sunmap.tga";
+
+const int kPlaneM = 30;
+const int kPlaneN = 40;
+
+const int kTorusM = 40;
+const int kTorusN = 30;
+const float kTorusR = 2;
+const float kTorus_r = 0.75;
+
+const Material  kYellowMaterial={
+    {0.2f, 0.2f, 0.2f, 1.0f}, //Ambient
+    {0.1f, 1.0f, 0.1f, 1.0f}, //Diffuse
+    {0.6f, 0.6f, 0.6f, 1.0f}, //Specular
+    {1.0f, 1.0f, 1.0f, 1.0f}, //Emission
+    90.0f
+  };
+
+const Material kBlueMaterial={
+    {0.2f, 0.2f, 0.2f, 1.0f}, //Ambient
+    {0.1f, 1.0f, 0.1f, 1.0f}, //Diffuse
+    {0.6f, 0.6f, 0.6f, 1.0f}, //Specular
+    {0.0f, 0.0f, 0.0f, 1.0f}, //Emission
+    90.0f
+  };
+
+const Material kJupiterMaterial = {
+    {0.6f, 0.6f, 0.6f, 1.0f}, //Ambient
+    {1.0f, 1.0f, 1.0f, 1.0f}, //Diffuse
+    {0.0f, 0.0f, 0.0f, 1.0f}, //Specular
+    {0.1f, 0.1f, 0.1f, 1.0f}, //Emission
+    60.0f
+};
+
+const Material  kIceMaterial={
+    {0.4f, 0.4f, 0.4f, 1.0f}, //Ambient
+    {0.95f, 0.95f, 0.99f, 1.0f}, //Diffuse
+    {0.99f, 0.99f, 0.99f, 1.0f}, //Specular
+    {0.0f, 0.0f, 0.0f, 1.0f}, //Emission
+    10.0f
+  };
+
+const PointLight kPointLight={
+    {0.0f, 0.0f, 0.0f, 1.0f}, //position
+    {0.1f, 0.1f, 0.1f, 1.0f}, //ambient
+    {1.0f, 1.0f, 1.0f, 1.0f}, //diffuse
+    {1.0f, 1.0f, 1.0f, 1.0f}, //specular
+    {0.5f, 0.005f, 0.0125f}	//attenuation
+};
+
+const SunLight kSunLight={
+    {0.0f, 7.5f, 3.0f, 0.0f}, //position
+    {0.1f, 0.1f, 0.1f, 1.0f}, //ambient
+    {1.0f, 1.0f, 1.0f, 1.0f}, //diffuse
+    {1.0f, 1.0f, 1.0f, 1.0f} //specular
+};
+
+const SpotLight kSpotLight={
+    {0.0f, 7.5f, 3.0f, 1.0f}, //position
+    {0.3f, 0.3f, 0.3f, 1.0f}, //ambient
+    {1.0f, 1.0f, 1.0f, 1.0f}, //diffuse
+    {1.0f, 1.0f, 1.0f, 1.0f}, //specular
+    {0.5f, 0.005f, 0.0125f},	//attenuation
+    {0.0f, -6.0f, -3.0f},	//direction
+    20,			//cutoff, degrees
+    20			//exponent
+};
+
+
 
 Window::Window(const char * title, int width, int height){
     title_ = title;
     width_ = width;
     height_ = height;
-    mode_ = 0;
+    last_time_ = 0;
+    x_origin_ = y_origin_ = -1;
+    current_program_ = POINT_PROGRAM;
 }
 
 void Window::Initialize(int major_gl_version, int minor_gl_version){
@@ -23,10 +114,13 @@ void Window::Initialize(int major_gl_version, int minor_gl_version){
 
     std::cout << "OpenGL initialized: OpenGL version: " << glGetString(GL_VERSION) << " GLSL version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
+    InitTextures();
     InitModels();
     InitPrograms();
 
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glClearColor(0.75f, 0.75f, 0.35f, 0.0f);
 
 }
 
@@ -80,32 +174,132 @@ void Window::InitGlewOrDie(){
 
 }
 
+void Window::InitTextures(){
+    color_texture_.Initialize(kColorTexureFile);
+    ice_texture_.Initialize(kIceTexureFile);
+    sky_texture_.Initialize(skyTextureFile);
+    jupiter_texture_.Initialize(jupiterTextureFile);
+    moon_texture_.Initialize(moonTextureFile);
+    sun_texture_.Initialize(sunTextureFile);
+}
+
 void Window::InitModels(){
-    triangle_.Initialize();
-    star_.Initialize();
-    starContour_.Initialize();
-    circle_.Initialize();
-    circleContour_.Initialize();
+    plane_.Initialize(kPlaneM, kPlaneN);
+    plane_.SetTexture(sky_texture_);
+    plane_.SetTextureUnit(GL_TEXTURE0);
+
+    sphere_.Initialize(kTorusM, kTorusN, kTorusR);
+    sphere_.SetTexture(sun_texture_);
+    sphere_.SetTextureUnit(GL_TEXTURE0);
+    sphere_.SetTexturePrim(jupiter_texture_);
+    sphere_.SetTextureThree(moon_texture_);
+    sphere_.SetMaterial(kYellowMaterial);
+    sphere_.SetMaterialPrim(kJupiterMaterial);
+    sphere_.SetMaterialThree(kJupiterMaterial);
 }
 
 void Window::InitPrograms(){
-    program_.Initialize();
+    view_matrix_.Translate(0, 0, -10);
+    projection_matrix_ = Mat4::CreatePerspectiveProjectionMatrix(60, (float)width_/(float)height_, 0.1f, 100.0f);
+
+    //point
+    point_program_.Initialize(kPointLightVertexShader, kPointLightFragmentShader);
+    glUseProgram(point_program_);
+    point_program_.SetLight(kPointLight);
+    point_program_.SetTextureUnit(0);
+    point_program_.SetProjectionMatrix(projection_matrix_);
+    point_program_.SetViewMatrix(view_matrix_);
+
+    //sun
+    sun_program_.Initialize(kSunLightVertexShader, kSunLightFragmentShader);
+    glUseProgram(sun_program_);
+    sun_program_.SetLight(kSunLight);
+    sun_program_.SetTextureUnit(0);
+    sun_program_.SetProjectionMatrix(projection_matrix_);
+    sun_program_.SetViewMatrix(view_matrix_);
+
+    //spot
+    spot_program_.Initialize(kSpotLightVertexShader, kSpotLightFragmentShader);
+    glUseProgram(spot_program_);
+    spot_program_.SetLight(kSpotLight);
+    spot_program_.SetTextureUnit(0);
+    spot_program_.SetProjectionMatrix(projection_matrix_);
+    spot_program_.SetViewMatrix(view_matrix_);
+
+    //program
+    program_.Initialize(kVertexShader, kFragmentShader);
+    program_.SetTextureUnit(0);
+    program_.SetProjectionMatrix(projection_matrix_);
+    program_.SetViewMatrix(view_matrix_);
+
+    glUseProgram(0);
 }
+
+void Window::SetViewMatrix()const{
+    glUseProgram(point_program_);
+    point_program_.SetViewMatrix(view_matrix_);
+    glUseProgram(spot_program_);
+    spot_program_.SetViewMatrix(view_matrix_);
+    glUseProgram(spot_program_);
+    spot_program_.SetViewMatrix(view_matrix_);
+    glUseProgram(0);
+}
+
+void Window::SetProjectionMatrix()const{
+    glUseProgram(point_program_);
+    point_program_.SetProjectionMatrix(projection_matrix_);
+    glUseProgram(spot_program_);
+    spot_program_.SetProjectionMatrix(projection_matrix_);
+    glUseProgram(sun_program_);
+    sun_program_.SetProjectionMatrix(projection_matrix_);
+    glUseProgram(0);
+}
+
+
 
 void Window::Resize(int new_width, int new_height){
     width_ = new_width;
     height_ = new_height;
+    projection_matrix_ = Mat4::CreatePerspectiveProjectionMatrix(60, (float)width_/(float)height_, 0.1f, 100.0f);
+    SetProjectionMatrix();
     glViewport(0, 0, width_, height_);
 }
 
 void Window::KeyEvent(int key, int /*scancode*/, int action, int /*mods*/){
-    if(action == GLFW_RELEASE){
+    if(action == GLFW_PRESS){
         switch (key){
             case GLFW_KEY_ESCAPE:
                 glfwSetWindowShouldClose(window_, GLFW_TRUE);
             break;
+            case GLFW_KEY_LEFT:
+              sphere_.SlowDown();
+            break;
+            case GLFW_KEY_RIGHT:
+              sphere_.SpeedUp();
+            break;
             case GLFW_KEY_SPACE:
-                mode_ = (mode_ + 1) % 5;
+              sphere_.ToggleAnimated();
+            break;
+            case GLFW_KEY_F1:
+              current_program_ = POINT_PROGRAM;
+            break;
+            case GLFW_KEY_F2:
+              current_program_ = SUN_PROGRAM;
+            break;
+            case GLFW_KEY_F3:
+              current_program_ = SPOT_PROGRAM;
+            break;
+            default:
+            break;
+        }
+    }
+    else if(action == GLFW_REPEAT){
+        switch (key){
+            case GLFW_KEY_LEFT:
+              sphere_.SlowDown();
+            break;
+            case GLFW_KEY_RIGHT:
+              sphere_.SpeedUp();
             break;
             default:
             break;
@@ -113,18 +307,72 @@ void Window::KeyEvent(int key, int /*scancode*/, int action, int /*mods*/){
     }
 }
 
+void Window::MouseScroll(double /* xoffset */, double yoffset){
+    view_matrix_.Translate(0, 0, -0.25f*yoffset);
+    SetViewMatrix();
+}
+
+void Window::MouseButton(int button, int action, int /*mods*/) {
+    // only start motion if the left button is pressed
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+          // when the button is released
+          if (action == GLFW_RELEASE) {
+              x_origin_ = -1;
+              y_origin_ = -1;
+          }
+          else  {// state = GLFW_PRESS
+              double x_pos, y_pos;
+              glfwGetCursorPos(*this, &x_pos, &y_pos);
+              x_origin_ = x_pos;
+              y_origin_ = y_pos;
+          }
+    }
+}
+
+
+void Window::MouseMove(double x_pos, double y_pos){	// this will only be true when the left button is down
+    float delta_x_angle=0;
+    float delta_y_angle=0;
+    if (x_origin_ >= 0 && y_origin_ >=0) {
+        // update deltaAngle
+        delta_x_angle = (x_pos - x_origin_) * 0.1f;
+        delta_y_angle = (y_pos - y_origin_) * 0.1f;
+        x_origin_=x_pos;
+        y_origin_=y_pos;
+
+        // update camera's direction
+        view_matrix_.RotateAboutY(delta_x_angle);
+        view_matrix_.RotateAboutX(delta_y_angle);
+        SetViewMatrix();
+   }
+}
+
+
 void Window::Run(void){
     while (!glfwWindowShouldClose(window_)){
-        glClear(GL_COLOR_BUFFER_BIT /*| GL_DEPTH_BUFFER_BIT*/);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        clock_t now = clock();
+        if (last_time_ == 0) last_time_ = now;
+        sphere_.Move((float)(now - last_time_) / CLOCKS_PER_SEC);
+        last_time_ = now;
 
-        if (mode_ == 0) triangle_.Draw(program_);
-        else if (mode_ == 1) star_.Draw(program_);
-        else if (mode_ == 2) starContour_.Draw(program_);
-        else if (mode_ == 3) circle_.Draw(program_);
-        else if (mode_ == 4) circleContour_.Draw(program_);
+        switch (current_program_){
+        case POINT_PROGRAM:
+            sphere_.Draw(point_program_);
+            plane_.Draw(program_);
+        break;
+        case SUN_PROGRAM:
+            sphere_.Draw(sun_program_);
+            plane_.Draw(program_);
+        break;
+        case SPOT_PROGRAM:
+            sphere_.Draw(spot_program_);
+            plane_.Draw(program_);
+        break;
+        }
 
         glfwSwapBuffers(window_);
-        glfwWaitEvents();
+        glfwPollEvents();
     }
 
 }
